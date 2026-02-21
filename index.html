@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Her Periods - Private Shared Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #E57373; --primary-dark: #D32F2F; --primary-light: #FFCDD2;
+            --secondary: #BA68C8; --accent: #FFB74D; --fertile: #81C784;
+            --ovulation: #4FC3F7; --bg-main: #FFF5F7; --bg-card: #FFFFFF;
+            --text-primary: #2C2C2C; --text-secondary: #6B6B6B; --border: #F0E4E8;
+            --shadow: rgba(229, 115, 115, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Manrope', sans-serif; background: linear-gradient(135deg, #FFF5F7 0%, #FFE9EE 100%); color: var(--text-primary); min-height: 100vh; }
+        .app-container { max-width: 1400px; margin: 0 auto; }
+
+        .header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); padding: 2rem 2rem 3rem; color: white; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-family: 'Cormorant Garamond', serif; font-size: 2.5rem; font-weight: 600; }
+
+        .view-toggle { display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.2); padding: 0.5rem; border-radius: 50px; backdrop-filter: blur(10px); }
+        .view-toggle button { padding: 0.75rem 1.5rem; border: none; background: transparent; color: white; cursor: pointer; border-radius: 50px; font-weight: 600; }
+        .view-toggle button.active { background: white; color: var(--primary); }
+
+        .main-content { padding: 2rem; display: grid; grid-template-columns: 1fr 400px; gap: 2rem; margin-top: -2rem; }
+        .calendar-section { background: var(--bg-card); border-radius: 24px; padding: 2rem; box-shadow: 0 8px 32px var(--shadow); }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .calendar-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--primary); }
+        .month-nav button { background: var(--primary-light); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; color: var(--primary-dark); }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--bg-main); font-weight: 500; }
+        .calendar-day.today { border: 2.5px solid var(--primary); }
+        .calendar-day.period { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(229, 115, 115, 0.4); }
+        .calendar-day.other-month { opacity: 0.2; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
+        .card { background: var(--bg-card); border-radius: 24px; padding: 1.5rem; box-shadow: 0 8px 32px var(--shadow); }
+        .card h3 { font-family: 'Cormorant Garamond', serif; color: var(--primary); margin-bottom: 1rem; }
+
+        .cycle-ring { position: relative; width: 160px; height: 160px; margin: 0 auto 1rem; }
+        .cycle-ring svg { transform: rotate(-90deg); }
+        .cycle-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .cycle-day-val { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
+
+        .history-list { max-height: 150px; overflow-y: auto; margin-top: 10px; border-top: 1px solid var(--border); }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .del-link { color: #ff5252; cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
+
+        .bottom-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .action-btn { padding: 1rem 2rem; border: none; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .action-btn.primary { background: var(--primary); color: white; }
+        .action-btn.secondary { background: #eee; color: #444; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 2rem; border-radius: 24px; width: 90%; max-width: 400px; }
+        
+        .partner-view { display: none; padding: 2rem; }
+        .partner-card { background: white; padding: 2rem; border-radius: 24px; border-left: 8px solid var(--secondary); margin-bottom: 1.5rem; }
+        .romantic-msg { background: #fff0f3; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-style: italic; color: #c2185b; border-left: 3px solid #ff4081; }
+        ul.check-list { list-style: none; }
+        ul.check-list li::before { content: '💝 '; }
+        ul.check-list li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">Her Periods</div>
+                <div class="view-toggle">
+                    <button id="uBtn" class="active" onclick="switchView('user')">My Tracker</button>
+                    <button id="pBtn" onclick="switchView('partner')">Partner View</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="userView">
+            <div class="main-content">
+                <div class="calendar-section">
+                    <div class="calendar-header">
+                        <h2 id="monthLabel">Month Year</h2>
+                        <div class="month-nav">
+                            <button onclick="changeMonth(-1)">‹</button>
+                            <button onclick="changeMonth(1)">›</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calGrid"></div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="card">
+                        <h3>Cycle Progress</h3>
+                        <div class="cycle-ring">
+                            <svg width="160" height="160">
+                                <circle cx="80" cy="80" r="70" fill="none" stroke="#FFE9EE" stroke-width="12"/>
+                                <circle id="ringProgress" cx="80" cy="80" r="70" fill="none" stroke="#E57373" stroke-width="12" stroke-dasharray="439.8" stroke-dashoffset="439.8"/>
+                            </svg>
+                            <div class="cycle-info">
+                                <div class="cycle-day-val" id="dayText">-</div>
+                                <div id="dayLabel" style="font-size: 0.8rem">Day</div>
+                            </div>
+                        </div>
+                        <p id="predictionText" style="text-align:center; font-size: 0.9rem; color: var(--text-secondary);"></p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Logged History</h3>
+                        <div class="history-list" id="historyList">
+                            <small style="color:#999">No dates logged yet.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-actions">
+                <button class="action-btn primary" onclick="openModal('logModal')">📅 Log Period Start</button>
+                <button class="action-btn secondary" onclick="openModal('setModal')">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <div id="partnerView" class="partner-view">
+            <div class="partner-card">
+                <h2 id="pStatus">Waiting for logs...</h2>
+                <p id="pDetails" style="margin-top:0.5rem; color:var(--text-secondary)">Once she logs her period, your updates will appear here.</p>
+            </div>
+            
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3>Romantic Messages to Say</h3>
+                <div id="romanticMessages"></div>
+            </div>
+
+            <div class="card">
+                <h3>The "Good Partner" Checklist</h3>
+                <ul class="check-list" id="partnerChecklist"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="logModal" class="modal">
+        <div class="modal-content">
+            <h3>Log Period Start</h3><br>
+            <input type="date" id="logDate" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;">
+            <button class="action-btn primary" style="width:100%" onclick="saveLog()">Save to Calendar</button>
+            <button class="action-btn secondary" style="width:100%; margin-top:8px" onclick="closeModal('logModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="setModal" class="modal">
+        <div class="modal-content">
+            <h3>Cycle Settings</h3><br>
+            <label style="font-size:0.8rem">Avg Cycle (Days)</label>
+            <input type="number" id="setCycle" value="28" style="width:100%; padding:10px; margin-bottom:10px;">
+            <label style="font-size:0.8rem">Period Duration (Days)</label>
+            <input type="number" id="setLen" value="5" style="width:100%; padding:10px; margin-bottom:15px;">
+            <button class="action-btn primary" style="width:100%" onclick="saveSettings()">Apply</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIza3yANnKenF8uGTC4rWyuYVwgZxW8Fo0pxvBc",
+            authDomain: "her-periods.firebaseapp.com",
+            projectId: "her-periods",
+            storageBucket: "her-periods.firebasestorage.app",
+            messagingSenderId: "246341818790",
+            appId: "1:246341818790:web:9f4ac207c68bb8766c9767"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const sharedID = new URLSearchParams(window.location.search).get('id') || 'our_private_tracker';
+
+        let userData = { cycleLength: 28, periodLength: 5, periodHistory: [], symptoms: {} };
+        let viewDate = new Date();
+
+        onSnapshot(doc(db, 'users', sharedID), (snap) => {
+            if (snap.exists()) {
+                userData = snap.data();
+                if (!userData.periodHistory) userData.periodHistory = [];
+                updateUI();
+            }
+        });
+
+        function updateUI() {
+            renderCalendar();
+            renderHistory();
+            
+            const dayTextEl = document.getElementById('dayText');
+            const ringEl = document.getElementById('ringProgress');
+            const dayLabelEl = document.getElementById('dayLabel');
+            const predTextEl = document.getElementById('predictionText');
+
+            if (!userData.periodHistory.length) {
+                dayTextEl.textContent = "-";
+                ringEl.style.strokeDashoffset = 439.8;
+                predTextEl.innerHTML = "No logs yet. Use the button below to start.";
+                resetPartnerToWaiting();
+                return;
+            }
+
+            const sorted = [...userData.periodHistory].sort((a,b) => new Date(b) - new Date(a));
+            const lastStart = new Date(sorted[0]);
+            const today = new Date(); today.setHours(0,0,0,0);
+            
+            const diffDays = Math.floor((today - lastStart) / 86400000);
+            
+            // LOGIC FIX: Check if we are past the expected cycle length
+            if (diffDays >= userData.cycleLength) {
+                dayTextEl.textContent = "!";
+                dayLabelEl.textContent = "Late";
+                ringEl.style.strokeDashoffset = 0; // Full circle
+                predTextEl.innerHTML = "Cycle complete. Waiting for new log.";
+                updatePartnerToLate(diffDays);
+            } else if (diffDays < 0) {
+                // Logged for the future
+                dayTextEl.textContent = "...";
+                dayLabelEl.textContent = "Future";
+                ringEl.style.strokeDashoffset = 439.8;
+                predTextEl.innerHTML = "Period logged for upcoming date.";
+                resetPartnerToWaiting();
+            } else {
+                const currentDay = diffDays + 1;
+                dayTextEl.textContent = currentDay;
+                dayLabelEl.textContent = "Day";
+                const progress = (currentDay / userData.cycleLength) * 439.8;
+                ringEl.style.strokeDashoffset = 439.8 - progress;
+
+                const nextPredicted = new Date(lastStart);
+                nextPredicted.setDate(nextPredicted.getDate() + userData.cycleLength);
+                predTextEl.innerHTML = `Next predicted: <b>${nextPredicted.toLocaleDateString(undefined, {month:'short', day:'numeric'})}</b>`;
+                
+                updatePartnerView(currentDay, nextPredicted);
+            }
+        }
+
+        function resetPartnerToWaiting() {
+            document.getElementById('pStatus').textContent = "Waiting for logs...";
+            document.getElementById('pDetails').textContent = "Please log her period start date to see insights.";
+            document.getElementById('romanticMessages').innerHTML = "";
+            document.getElementById('partnerChecklist').innerHTML = "";
+        }
+
+        function updatePartnerToLate(totalDays) {
+            document.getElementById('pStatus').textContent = "Cycle Overdue ⏳";
+            document.getElementById('pDetails').textContent = `It has been ${totalDays} days since her last log. She might start any time!`;
+            const msgDiv = document.getElementById('romanticMessages');
+            msgDiv.innerHTML = '<div class="romantic-msg">"I know you’re waiting for your cycle to start and might be feeling a bit uneasy. I’m right here with you."</div>';
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calGrid');
+            grid.innerHTML = '';
+            const y = viewDate.getFullYear(), m = viewDate.getMonth();
+            document.getElementById('monthLabel').textContent = viewDate.toLocaleDateString(undefined, {month:'long', year:'numeric'});
+
+            const first = new Date(y, m, 1).getDay();
+            const last = new Date(y, m + 1, 0).getDate();
+
+            for(let i=0; i<first; i++) grid.appendChild(Object.assign(document.createElement('div'), {className:'calendar-day other-month'}));
+
+            for(let d=1; d<=last; d++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = d;
+                const dDate = new Date(y, m, d);
+                
+                userData.periodHistory.forEach(startStr => {
+                    const start = new Date(startStr);
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + (userData.periodLength - 1));
+                    if (dDate >= start && dDate <= end) dayEl.classList.add('period');
+                });
+
+                if (new Date().toDateString() === dDate.toDateString()) dayEl.classList.add('today');
+                grid.appendChild(dayEl);
+            }
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            if(!userData.periodHistory.length) { list.innerHTML = '<small>No history.</small>'; return; }
+            
+            [...userData.periodHistory].sort((a,b) => new Date(b)-new Date(a)).forEach(date => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `<span>${date}</span><span class="del-link" onclick="deleteDate('${date}')">Delete</span>`;
+                list.appendChild(item);
+            });
+        }
+
+        window.deleteDate = async (date) => {
+            if(confirm(`Remove period starting ${date}?`)) {
+                userData.periodHistory = userData.periodHistory.filter(d => d !== date);
+                await setDoc(doc(db, 'users', sharedID), userData);
+            }
+        };
+
+        window.saveLog = async () => {
+            const date = document.getElementById('logDate').value;
+            if (date && !userData.periodHistory.includes(date)) {
+                userData.periodHistory.push(date);
+                await setDoc(doc(db, 'users', sharedID), userData);
+            }
+            closeModal('logModal');
+        };
+
+        window.saveSettings = async () => {
+            userData.cycleLength = parseInt(document.getElementById('setCycle').value);
+            userData.periodLength = parseInt(document.getElementById('setLen').value);
+            await setDoc(doc(db, 'users', sharedID), userData);
+            closeModal('setModal');
+        };
+
+        function updatePartnerView(day, next) {
+            const status = document.getElementById('pStatus');
+            const detail = document.getElementById('pDetails');
+            const msgDiv = document.getElementById('romanticMessages');
+            const checkList = document.getElementById('partnerChecklist');
+
+            msgDiv.innerHTML = '';
+            checkList.innerHTML = '';
+
+            // This only triggers "She's on her period" if we are within the first X days of her LOGGED date
+            const isPeriod = day <= userData.periodLength;
+
+            if (isPeriod) {
+                status.textContent = "She's on her period 🩸";
+                detail.textContent = `Day ${day} of this cycle. Take extra care of her.`;
+                
+                const msgs = [
+                    "I’m so proud of how strong you are, even when you aren't feeling your best.",
+                    "I’ve got the snacks and the heating pad ready, just tell me where you want me.",
+                    "You look absolutely beautiful today, no matter how you feel inside.",
+                    "I’m here for whatever you need—a massage, a hug, or just some peace.",
+                    "I love you more than words, and I'm here to take care of you."
+                ];
+                msgs.forEach(m => msgDiv.innerHTML += `<div class="romantic-msg">"${m}"</div>`);
+
+                const checks = ["Buy Dark Chocolate", "Refill the hot water bottle", "Offer a lower back massage", "Handle the chores/dinner tonight", "Keep her favorite drink nearby"];
+                checks.forEach(c => checkList.innerHTML += `<li>${c}</li>`);
+            } else {
+                status.textContent = "Not on period ✨";
+                detail.textContent = `Cycle day ${day}. Predicted next: ${next.toLocaleDateString()}`;
+                
+                const msgs = [
+                    "I was just thinking about how lucky I am to have you in my life.",
+                    "You have such an amazing energy today, it’s contagious.",
+                    "I can't wait to see you later and just spend time with you.",
+                    "You make every day feel like a special occasion.",
+                    "I'm so attracted to your mind and your spirit."
+                ];
+                msgs.forEach(m => msgDiv.innerHTML += `<div class="romantic-msg">"${m}"</div>`);
+
+                const checks = ["Plan a fun date night", "Surprise her with flowers", "Tell her she looks amazing", "Take a long walk together", "Buy her favorite treat just because"];
+                checks.forEach(c => checkList.innerHTML += `<li>${c}</li>`);
+            }
+        }
+
+        window.switchView = (v) => {
+            document.getElementById('userView').style.display = v==='user'?'block':'none';
+            document.getElementById('partnerView').style.display = v==='partner'?'block':'none';
+            document.getElementById('uBtn').className = v==='user'?'active':'';
+            document.getElementById('pBtn').className = v==='partner'?'active':'';
+        };
+
+        window.changeMonth = (dir) => { viewDate.setMonth(viewDate.getMonth() + dir); renderCalendar(); };
+        window.openModal = (id) => document.getElementById(id).classList.add('active');
+        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+        document.getElementById('logDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>
